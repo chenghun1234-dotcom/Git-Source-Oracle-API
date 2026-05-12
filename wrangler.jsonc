@@ -1,0 +1,29 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "git-source-oracle-api",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-12",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "vars": {
+    "GITHUB_TOKEN": "YOUR_GITHUB_TOKEN_HERE"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "git_source_cache"
+    }
+  ],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "git_source_db",
+      "database_id": "git_source_db"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}
