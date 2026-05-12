@@ -1,0 +1,47 @@
+name: Oracle CI - Error Fixer
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Run Tests
+        id: test_step
+        run: npm test
+        continue-on-error: true # 중요: 에러가 나도 다음 스텝(Oracle)을 실행함
+
+      - name: Consult Oracle on Failure
+        if: steps.test_step.outcome == 'failure'
+        env:
+          ORACLE_API_URL: ${{ secrets.ORACLE_API_URL }} # 사용자 API 주소
+        run: |
+          # 1. 마지막 에러 로그 추출 (예시)
+          ERROR_LOG=$(tail -n 20 test-results.log || echo "Test failed with unknown error")
+          
+          # 2. Oracle API 호출
+          RESPONSE=$(curl -s -X POST $ORACLE_API_URL/api/v1/debug \
+            -H "Content-Type: application/json" \
+            -d "{\"error\": \"$ERROR_LOG\", \"context\": \"GitHub Actions CI\"}")
+          
+          SUGGESTION=$(echo $RESPONSE | jq -r '.suggestion')
+          SOURCE=$(echo $RESPONSE | jq -r '.source_url')
+          
+          # 3. PR에 댓글 남기기 (GitHub CLI 사용)
+          gh pr comment ${{ github.event.pull_request.number }} --body "🔮 **Oracle Insights:** $SUGGESTION \n\n🔗 [Verified Solution]($SOURCE)"
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

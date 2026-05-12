@@ -6,6 +6,8 @@ type Bindings = {
   DB: D1Database
   CACHE: KVNamespace
   GITHUB_TOKEN: string
+  AI: Ai
+  VECTOR_INDEX: VectorizeIndex
 }
 
 const app = new Hono<{ Bindings: Bindings }>()
@@ -275,13 +277,52 @@ app.get('/', (c) => {
 
                 <div class="code-block" style="max-width: 700px; margin: 4rem auto 0;">
                     <div><span>POST</span> /api/v1/debug</div>
-                    <div style="color: #64748b; margin: 1rem 0;">// Input: Error stack trace</div>
-                    <div>{</div>
-                    <div style="padding-left: 1.5rem;">"error": <b>"TypeError: Cannot read properties of undefined (reading 'map')"</b>,</div>
-                    <div style="padding-left: 1.5rem;">"context": "React v18.2.0, Next.js v14"</div>
-                    <div>}</div>
-                    <div style="color: var(--accent); margin-top: 1.5rem;">// Oracle Response: Verified solution from 150+ high-star repos</div>
+                    <div style="margin: 1.5rem 0;">
+                        <input id="errorInput" type="text" placeholder="Paste your error message here..." style="width: 100%; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); padding: 0.75rem; color: white; border-radius: 8px; font-family: inherit;">
+                        <button onclick="testApi()" class="btn btn-primary" style="margin-top: 1rem; width: 100%; padding: 0.75rem;">Analyze with Oracle</button>
+                    </div>
+                    <div id="apiResponse" style="display: none; margin-top: 1.5rem; border-top: 1px solid var(--glass-border); padding-top: 1.5rem;">
+                        <div style="color: var(--accent); margin-bottom: 0.5rem;">// Oracle Solution</div>
+                        <div id="responseText" style="color: var(--text-muted); font-size: 0.85rem; white-space: pre-wrap;"></div>
+                        <a id="sourceLink" href="#" target="_blank" style="color: var(--secondary); font-size: 0.8rem; display: block; margin-top: 1rem; text-decoration: none;">View Source on GitHub →</a>
+                    </div>
                 </div>
+
+                <script>
+                    async function testApi() {
+                        const error = document.getElementById('errorInput').value;
+                        const btn = event.target;
+                        const responseDiv = document.getElementById('apiResponse');
+                        const responseText = document.getElementById('responseText');
+                        const sourceLink = document.getElementById('sourceLink');
+
+                        if (!error) return alert('Please enter an error message');
+
+                        btn.innerText = 'Analyzing...';
+                        try {
+                            const res = await fetch('/api/v1/debug', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ error, context: 'Browser Demo' })
+                            });
+                            const data = await res.json();
+                            
+                            responseDiv.style.display = 'block';
+                            responseText.innerText = data.suggestion || data.error;
+                            if (data.source_url) {
+                                sourceLink.href = data.source_url;
+                                sourceLink.style.display = 'block';
+                            } else {
+                                sourceLink.style.display = 'none';
+                            }
+                        } catch (e) {
+                            alert('Error calling API. Make sure the server is running.');
+                        } finally {
+                            btn.innerText = 'Analyze with Oracle';
+                        }
+                    }
+                </script>
+
             </section>
 
             <section id="features" class="grid">
@@ -303,7 +344,41 @@ app.get('/', (c) => {
                 </div>
             </section>
 
+            <section id="docs" class="pricing" style="text-align: left; background: var(--glass); border: 1px solid var(--glass-border); padding: 4rem; border-radius: 24px;">
+                <div class="badge">Documentation</div>
+                <h2 style="margin-bottom: 2rem;">How to integrate Oracle.Git</h2>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4rem;">
+                    <div>
+                        <h3 style="color: var(--accent); margin-bottom: 1rem;">Endpoint: /api/v1/debug</h3>
+                        <p style="margin-bottom: 1.5rem;">Send your error logs and context to get a verified solution from high-star GitHub repositories.</p>
+                        <div class="code-block" style="margin-top: 0;">
+                            <div><span>curl</span> -X POST https://your-api.com/api/v1/debug \</div>
+                            <div>  -H "Content-Type: application/json" \</div>
+                            <div>  -d '{</div>
+                            <div style="padding-left: 1.5rem;">"error": "TypeError: ...",</div>
+                            <div style="padding-left: 1.5rem;">"context": "React v18"</div>
+                            <div>  }'</div>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 style="color: var(--secondary); margin-bottom: 1rem;">Endpoint: /api/v1/modernize</h3>
+                        <p style="margin-bottom: 1.5rem;">Paste legacy code snippets and define your target library to receive a refactored version based on modern patterns.</p>
+                        <div class="code-block" style="margin-top: 0;">
+                            <div><span>curl</span> -X POST https://your-api.com/api/v1/modernize \</div>
+                            <div>  -H "Content-Type: application/json" \</div>
+                            <div>  -d '{</div>
+                            <div style="padding-left: 1.5rem;">"code": "class App extends React.Component...",</div>
+                            <div style="padding-left: 1.5rem;">"target": "React Hooks"</div>
+                            <div>  }'</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <section id="pricing" class="pricing">
+
                 <div class="badge">Monetization</div>
                 <h2>Simple, Developer-First Pricing</h2>
                 <div class="price-grid">
@@ -340,43 +415,162 @@ app.get('/', (c) => {
 // API Endpoints
 app.get('/api/v1/ping', (c) => c.json({ status: 'ok', timestamp: Date.now() }))
 
-app.post('/api/v1/debug', async (c) => {
-  const body = await c.req.json()
-  // Mock GitHub Search Logic
-  return c.json({
-    suggestion: "Ensure the array is defined before calling .map(). Using optional chaining and a fallback value is the standard approach in React 18+.",
-    diff: "- data.map(item => ...)\n+ (data ?? []).map(item => ...)",
-    confidence: 0.98,
-    references: [
-      { repo: "facebook/react", issue: 12345, stars: 215000 }
-    ]
-  })
-})
+// Helper: GitHub API Caller
+async function fetchGitHub(query: string, type: 'issues' | 'code', token: string) {
+  const url = type === 'issues' 
+    ? `https://api.github.com/search/issues?q=${encodeURIComponent(query)}+is:closed&sort=relevance&per_page=3`
+    : `https://api.github.com/search/code?q=${encodeURIComponent(query)}&sort=stars&per_page=5`;
+  
+  const res = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'User-Agent': 'Git-Source-Oracle-API'
+    }
+  });
+  
+  if (!res.ok) return null;
+  return await res.json();
+}
 
-app.post('/api/v1/modernize', async (c) => {
+app.post('/api/v1/debug', async (c) => {
+  const { error, context } = await c.req.json()
+  const GITHUB_TOKEN = c.env.GITHUB_TOKEN;
+
+  // 1. Generate Embedding for Semantic Search
+  const embeddingResponse = await c.env.AI.run('@cf/baai/bge-base-en-v1.5', {
+    text: [error]
+  });
+  const vector = embeddingResponse.data[0];
+
+  // 2. Query Vector Database (Semantic Cache)
+  const matches = await c.env.VECTOR_INDEX.query(vector, { topK: 1, returnMetadata: true });
+  
+  if (matches.matches.length > 0 && matches.matches[0].score > 0.85) {
+    const match = matches.matches[0];
+    return c.json({
+      suggestion: match.metadata?.suggestion,
+      source_url: match.metadata?.source_url,
+      confidence: match.score,
+      cached: "semantic"
+    });
+  }
+
+  // 3. Fallback: Fetch from GitHub
+  const searchQuery = `${error} ${context || ''}`;
+  const data: any = await fetchGitHub(searchQuery, 'issues', GITHUB_TOKEN);
+
+  if (!data || data.items.length === 0) {
+    return c.json({ error: "No matching GitHub issues found." }, 404);
+  }
+
+  const topIssue = data.items[0];
+  
+  // 4. AI Summarization
+  const aiResponse = await c.env.AI.run('@cf/meta/llama-3-8b-instruct', {
+    messages: [
+      { role: 'system', content: 'Summarize the solution to this GitHub issue in one concise sentence.' },
+      { role: 'user', content: `Title: ${topIssue.title}\nError: ${error}` }
+    ]
+  });
+
+  const suggestion = (aiResponse as any).response || "Check the linked GitHub issue for a solution.";
+
+  // 5. Index the New Knowledge (Async)
+  c.executionCtx.waitUntil((async () => {
+    try {
+      await c.env.VECTOR_INDEX.upsert([{
+        id: crypto.randomUUID(),
+        values: vector,
+        metadata: {
+          suggestion,
+          source_url: topIssue.html_url,
+          error_message: error
+        }
+      }]);
+    } catch (e) {
+      console.error("Vector Indexing Error:", e);
+    }
+  })());
+
   return c.json({
-    modernized: "// Pattern extracted from Vercel's latest open-source templates\nconst [data, setData] = useState([]);",
-    improvements: ["Uses functional state updates", "Type-safe initial values"]
-  })
+    suggestion,
+    source_url: topIssue.html_url,
+    confidence: topIssue.score / 100,
+    title: topIssue.title,
+    cached: false
+  });
 })
 
 app.post('/api/v1/examples', async (c) => {
-  return c.json({
-    snippets: [
-      { repo: "shadcn/ui", usage: "Lucide icon integration pattern" },
-      { repo: "t3-oss/create-t3-app", usage: "TRPC middleware example" }
+  const { query, language } = await c.req.json();
+  const GITHUB_TOKEN = c.env.GITHUB_TOKEN;
+
+  const searchQuery = `${query} language:${language || 'javascript'}`;
+  const data: any = await fetchGitHub(searchQuery, 'code', GITHUB_TOKEN);
+
+  if (!data || data.items.length === 0) {
+    return c.json({ error: "No code examples found." }, 404);
+  }
+
+  const snippets = data.items.map((item: any) => ({
+    repo: item.repository.full_name,
+    path: item.path,
+    url: item.html_url
+  }));
+
+  return c.json({ snippets });
+})
+
+app.post('/api/v1/modernize', async (c) => {
+  const { code, target } = await c.req.json()
+  
+  // 3. AI Modernization
+  const aiResponse = await c.env.AI.run('@cf/meta/llama-3-8b-instruct', {
+    messages: [
+      { role: 'system', content: `Refactor the provided code to use the latest ${target || 'industry standard'} patterns. Focus on performance and readability.` },
+      { role: 'user', content: code }
     ]
-  })
+  });
+
+  return c.json({
+    modernized: (aiResponse as any).response,
+    tip: "Generated based on top-starred open source patterns using Workers AI."
+  });
 })
 
 app.post('/api/v1/vulnerability-patch', async (c) => {
+  const { packageJson, library } = await c.req.json();
+  const GITHUB_TOKEN = c.env.GITHUB_TOKEN;
+
+  // 1. Identify Target (Mock parser for packageJson if library not provided)
+  const targetLib = library || (packageJson ? Object.keys(JSON.parse(packageJson).dependencies)[0] : "unknown");
+
+  // 2. Fetch Security Context from GitHub
+  const searchQuery = `${targetLib} vulnerability fix security patch`;
+  const data: any = await fetchGitHub(searchQuery, 'issues', GITHUB_TOKEN);
+
+  if (!data || data.items.length === 0) {
+    return c.json({ status: "safe", message: "No trending security patches found for this library." });
+  }
+
+  // 3. AI Surgical Patch Suggestion
+  const aiResponse = await c.env.AI.run('@cf/meta/llama-3-8b-instruct', {
+    messages: [
+      { role: 'system', content: 'You are a security engineer. Analyze the vulnerability for the given library and suggest a minimal code patch (Diff) based on industry best practices. Do not just suggest updating the version.' },
+      { role: 'user', content: `Library: ${targetLib}\nRecent Fix Discussions: ${data.items.map((i: any) => i.title).join(', ')}` }
+    ]
+  });
+
   return c.json({
     status: "vulnerable",
-    severity: "high",
-    vulnerability: "CVE-2024-XXXX (Prototype Pollution)",
-    patch: "Update lodash to v4.17.21 or apply the following diff..."
-  })
+    library: targetLib,
+    patch_suggestion: (aiResponse as any).response,
+    references: data.items.slice(0, 2).map((i: any) => i.html_url)
+  });
 })
+
+
 
 export default app
 

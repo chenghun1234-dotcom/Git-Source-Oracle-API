@@ -1,7 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "git-source-oracle-api",
+  "account_id": "13824e4608d0c5e51d238811cd8a0a44",
   "main": "src/index.ts",
+
   "compatibility_date": "2026-05-12",
   "compatibility_flags": [
     "nodejs_compat"
@@ -22,7 +24,17 @@
       "database_id": "git_source_db"
     }
   ],
+  "ai": {
+    "binding": "AI"
+  },
+  "vectorize": [
+    {
+      "binding": "VECTOR_INDEX",
+      "index_name": "git_source_vectors"
+    }
+  ],
   "observability": {
+
     "enabled": true,
     "head_sampling_rate": 1
   }
